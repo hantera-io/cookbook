@@ -1,0 +1,43 @@
+# This examples sets up a Reactor that acts as a facade for mailtrap.io's API
+# It then uses this from a Rule that will trigger an e-mail when the order state changes from pending to confirmed.
+
+# Mailtrap Reactor
+uri: /resources/components/reactor/mailtrap
+spec:
+  displayName: 'Mailtrap' 
+  description: Reactor facade for mailtrap.io
+  runtime: reactor
+  componentVersion: 1.0.0
+  codeFile: './mailtrap.hreactor'
+---
+uri: /resources/reactors/mailtrap
+spec:
+  componentId: reactor/mailtrap # The componentId is the part of the component URI that comes after '/resources/component/' is the manifest above
+  parameters:
+    from: "{ email = '', name = '' }" # Set your sender information
+---
+
+# Rule
+uri: /resources/components/rules/orderConfirmation
+spec:
+  displayName: 'OrderConfirmation (Mailtrap)' 
+  description: Uses mailtrap reactor to send order confirmation based on sample template
+  runtime: rule
+  componentVersion: 1.0.0
+  codeFile: './order-confirmation.hrule'
+---
+uri: /resources/rules/system/orderConfirmation
+spec:
+  displayName: Order Confirmation E-mail
+  components:
+    - componentId: rules/orderConfirmation
+      parameters:
+        templateUuid: "" # Set to your mailtrap template uuid to use for the order confirmation e-mail
+---
+
+# The mailtrap Reactor gets the apiKey from the registry. This ensures that it can be kept as a secret
+# and that all mailtrap reactor resources uses the same api key.
+uri: /resources/registry/externalServices/mailtrap/apiKey
+spec:
+  value: "" # Set your mailtrap API key
+  isSecret: true

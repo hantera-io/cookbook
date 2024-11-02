@@ -1,0 +1,45 @@
+// Reactor component acting as a facade for mailtrap.io API.
+
+// This reactor expects the sender to be configured on the reactor instance. See h_manifest.yaml.
+param `from`: {
+  email: text
+  name: text
+}
+
+// The Mailtrap API key is fetched from the registry allowing it to be set securely and globally.
+let apiKey = registry->'externalServices/mailtrap/apiKey'
+
+// As the arguments can not be fully inferred from the usage below, we define the method argument type here up front.
+let SendEmailTemplateArgs: {
+  to: {
+    email: text
+    name: text
+  }
+  templateUuid: uuid
+  templateVariables: { }
+}
+
+from {
+  // The method provided by the Reactor to send e-mails through Mailtrap using a pre-configured template
+  sendEmailTemplate = (args: SendEmailTemplateArgs) =>
+    httpPost('https://send.api.mailtrap.io/api/send')
+    with {
+      headers = {
+        'Authorization' -> $'Bearer {apiKey}'
+        'Content-Type' -> 'application/json'
+      }
+      body = {
+        to = [{
+          email = args.to.email
+          name = args.to.name
+        }]
+        from = {
+          email = `from`.email
+          name = `from`.name
+        }
+        // To find the template UUID, go to https://mailtrap.io/email_templates -> Your template -> Integration tab
+        template_uuid = args.templateUuid
+        template_variables = args.templateVariables
+      } asJson
+    }
+}
