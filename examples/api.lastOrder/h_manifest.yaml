@@ -1,0 +1,10 @@
+uri: /resources/components/api/lastOrder
+spec:
+  name: API.lastOrder
+  runtime: reactor
+  componentVersion: '1.0.0'
+  codeFile: lastOrder.hreactor
+---
+uri: /resources/reactors/lastOrder
+spec:
+  componentId: api/lastOrder

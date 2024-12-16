@@ -1,0 +1,29 @@
+
+from {
+  
+  get = (args) =>
+    // Query for orders ordered by latest creation timestamp
+    let orderQuery = query {
+      edge = 'orders'
+      orderBy = 'createdAt desc'
+      node = {
+        fields = ['orderNumber']
+      }
+    }
+
+    // Extract order number from query result
+    let orderNumber = orderQuery match
+      QueryError |> 'Error'
+      |>
+        orderQuery.nodes
+        select r => r.orderNumber
+        first // first returns first orderNumber or nothing
+
+    from return (
+      orderNumber match
+        nothing |> 'No orders'
+        |> orderNumber
+    )
+
+
+}
