@@ -1,0 +1,15 @@
+param input: OnOrderCommands
+
+let deliveriesBefore = input.order.deliveries
+let deliveries = input.order.deliveries
+let completedDeliveries =
+  deliveriesBefore as before
+  join deliveries as delivery on deliveryId
+  where m => m match
+    (:{deliveryState: not 'completed'}, :{deliveryState: 'completed'}) |> true
+    |> false
+  select m => m.delivery.deliveryId
+
+let completeReservations = effects.common.callReactor('completeReservation', 'sendCompleteReservationRequest', {
+
+})
