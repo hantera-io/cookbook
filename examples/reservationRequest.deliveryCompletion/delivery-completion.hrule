@@ -2,14 +2,17 @@ param input: OnOrderCommands
 
 let deliveriesBefore = input.order.deliveries
 let deliveries = input.order.deliveries
+// Get all deliveries that were not completed before but are now completed
 let completedDeliveries =
   deliveriesBefore as before
   join deliveries as delivery on deliveryId
   where m => m match
     (:{deliveryState: not 'completed'}, :{deliveryState: 'completed'}) |> true
     |> false
-  select m => m.delivery.deliveryId
+  select m => m.delivery
 
-let completeReservations = effects.common.callReactor('completeReservation', 'sendCompleteReservationRequest', {
-
-})
+// For each completed delivery, complete the reservation requests for eacch order line
+from completedDeliveries select completedDelivery => {
+  from completedDelivery.orderLines select orderLine => 
+    effects.common.callReactor('completeReservation', 'sendCompleteReservationRequest', {args = orderLines.ReservationRequestId})
+} 
