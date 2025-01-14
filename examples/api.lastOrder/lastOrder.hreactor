@@ -13,7 +13,7 @@ from {
 
     // Extract order number from query result
     let orderNumber = orderQuery match
-      QueryError |> 'Error'
+      QueryError |> $'Error: {orderQuery.message}'
       |>
         orderQuery.nodes
         select r => r.orderNumber
