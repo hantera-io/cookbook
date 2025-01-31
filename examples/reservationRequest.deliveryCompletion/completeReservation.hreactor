@@ -1,5 +1,13 @@
 from {
-  // Reservation ID (GUID)
-  sendCompleteReservationRequest = (args: text) =>
-   // send complete message
+  sendCompleteReservationRequest = reservationRequestId =>
+    message(
+      'reservationRequest',
+      $'{reservationRequestId}',
+      'complete'
+      {
+
+      }
+    ) then result => result match
+      text |> return $'Result was {result}'
+      |> return $'Unexpected result: {typeof result}'
 }
