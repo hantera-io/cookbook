@@ -15,7 +15,7 @@ let SendEmailTemplateArgs: {
     email: text
     name: text
   }
-  templateUuid: /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/
+  templateUuid: /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/ | uuid
   templateVariables: { }
 }
 

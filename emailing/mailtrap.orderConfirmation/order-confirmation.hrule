@@ -24,7 +24,7 @@ let sendOrderConfirmation = effects.common.callReactor('mailtrap', 'sendEmailTem
       }
     }
     order = {
-      number = input.order.orderNumber
+      `number` = input.order.orderNumber
       items =
         input.order.deliveries
         select d => d.orderLines
