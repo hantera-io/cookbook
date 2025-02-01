@@ -1,7 +1,13 @@
+// This Rule engages when an order changes due to commands beign applied
 param input: OnOrderCommands
 
-let deliveriesBefore = input.order.deliveries
+let deliveriesBefore = input.before.deliveries
 let deliveries = input.order.deliveries
+
+let completeReservationRequest (reservationRequestId) |> effects.common.callReactor('completeReservation', 'sendCompleteReservationRequest', {
+  reservationRequestId = reservationRequestId
+})
+
 // Get all deliveries that were not completed before but are now completed
 let completedDeliveries =
   deliveriesBefore as before
@@ -11,8 +17,10 @@ let completedDeliveries =
     |> false
   select m => m.delivery
 
-// For each completed delivery, complete the reservation requests for eacch order line
-from completedDeliveries select completedDelivery => {
-  from completedDelivery.orderLines select orderLine => 
-    effects.common.callReactor('completeReservation', 'sendCompleteReservationRequest', {args = orderLines.ReservationRequestId})
-} 
+// For each completed delivery, complete the reservation requests for each order line
+from
+  completedDeliveries
+  select delivery =>
+    delivery.orderLines
+    select orderline => orderline.reservationRequestId completeReservationRequest
+  flatten
