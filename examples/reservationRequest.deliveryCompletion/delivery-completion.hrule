@@ -4,9 +4,7 @@ param input: OnOrderCommands
 let deliveriesBefore = input.before.deliveries
 let deliveries = input.order.deliveries
 
-let completeReservationRequest (reservationRequestId) |> effects.common.callReactor('completeReservation', 'sendCompleteReservationRequest', {
-  reservationRequestId = reservationRequestId
-})
+let completeReservationRequest (reservationRequestId) |> effects.common.sendMessage($'/resources/actors/reservationRequest/{reservationRequestId}', 'complete', {})
 
 // Get all deliveries that were not completed before but are now completed
 let completedDeliveries =

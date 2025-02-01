@@ -1,22 +1,8 @@
-# Reactor
-uri: /resources/components/api/completeReservation
-spec:
-  displayName: Complete Reservation
-  description: Completes a reservation request and thus all stock reservations
-  runtime: reactor
-  componentVersion: 1.0.0
-  codeFile: completeReservation.hreactor
----
-uri: /resources/reactors/completeReservation
-spec:
-  componentId: api/completeReservation
----
-
 # Rule
 uri: /resources/components/rules/deliveryCompletion
 spec:
   displayName: Complete reservations on delivery completion
-  description: Uses the complete reservation reactor to complete associated stock reservations when a delivery is completed
+  description: Completes a reservation request and all associated stock reservations when a delivery is completed
   runtime: rule
   componentVersion: 1.0.0
   codeFile: delivery-completion.hrule
