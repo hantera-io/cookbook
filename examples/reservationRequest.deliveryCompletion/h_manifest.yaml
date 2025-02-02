@@ -1,0 +1,14 @@
+# Rule
+uri: /resources/components/rules/deliveryCompletion
+spec:
+  displayName: Complete reservations on delivery completion
+  description: Completes a reservation request and all associated stock reservations when a delivery is completed
+  runtime: rule
+  componentVersion: 1.0.0
+  codeFile: delivery-completion.hrule
+---
+uri: /resources/rules/system/deliveryCompletion
+spec:
+  displayName: Complete reservations on delivery completion
+  components:
+    - componentId: rules/deliveryCompletion
