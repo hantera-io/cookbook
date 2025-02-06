@@ -1,0 +1,6 @@
+uri: /resources/rules/orderManagement/cancelPendingOrder
+spec:
+  components:
+  - componentId: orderManagement/cancelPendingOrder.hrule
+    parameters:
+      delay: '15 seconds'

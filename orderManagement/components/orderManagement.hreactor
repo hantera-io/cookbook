@@ -2,13 +2,13 @@
 from {
   
   // Method for canceling an order (if it's in pending state)
-  cancelPendingOrder = (args: {
+  cancelPendingOrder = (
     orderId: uuid // Prevent query injection by requiring UUID
-  }) =>
+  ) =>
     // Get current order state
     let orderQuery = query {
       edge = 'orders'
-      filter = $'orderId == {args.orderId}'
+      filter = $'orderId == {orderId}'
       node = {
         fields = ['orderState']
       }
@@ -25,7 +25,7 @@ from {
     from orderState match
       'pending' |> message (
         'order'
-        $'{args.orderId}'
+        $'{orderId}'
         'applyCommands'
         {
           commands = [{

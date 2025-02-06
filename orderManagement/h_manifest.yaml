@@ -1,10 +1,27 @@
+######################################################
+# All components
+######################################################
+
 uri: /resources/components/orderManagement.hreactor
 spec:
   name: OrderManagement
   runtime: reactor
   componentVersion: '1.0.0'
-  codeFile: orderManagement.hreactor
+  codeFile: ./components/orderManagement.hreactor
 ---
+uri: /resources/components/orderManagement/cancelPendingOrder.hrule
+spec:
+  name: 'OrderManagement: CancelPendingOrder'
+  runtime: rule
+  componentVersion: '1.0.0'
+  codeFile: ./components/cancelPendingOrder.hrule
+---
+
+######################################################
+# Main order management reactor
+# See other .yaml files to install indivudual rules.
+######################################################
+
 uri: /resources/reactors/orderManagement
 spec:
   componentId: orderManagement.hreactor
