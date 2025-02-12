@@ -10,9 +10,7 @@ let completeReservationRequest (reservationRequestId) |> effects.common.sendMess
 let completedDeliveries =
   deliveriesBefore as before
   join deliveries as delivery on deliveryId
-  where m => m match
-    (:{deliveryState: not 'completed'}, :{deliveryState: 'completed'}) |> true
-    |> false
+  where m => m is (:{deliveryState: not 'completed'}, :{deliveryState: 'completed'})
   select m => m.delivery
 
 // For each completed delivery, complete the reservation requests for each order line
