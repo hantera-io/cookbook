@@ -1,0 +1,4 @@
+uri: /resources/rules/orderManagement/releaseToInvoiceOnShipping
+spec:
+  components:
+  - componentId: orderManagement/releaseToInvoiceOnShipping.hrule

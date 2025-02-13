@@ -6,24 +6,20 @@ from {
     orderId: uuid // Prevent query injection by requiring UUID
   ) =>
     // Get current order state
-    let orderQuery = query {
-      edge = 'orders'
-      filter = $'orderId == {orderId}'
-      node = {
-        fields = ['orderState']
-      }
-    }
+    let orderQuery =
+      query orders(orderState)
+      filter $'orderId == {orderId}'
 
     // Extract order state from query result
     let orderState = orderQuery match
       QueryError |> $'Error: {orderQuery.message}'
       |>
-        orderQuery.nodes
+        orderQuery
         select r => r.orderState
         first // first returns first orderNumber or nothing
 
     from orderState match
-      'pending' |> message (
+      'pending' |> resources.messageActor (
         'order'
         $'{orderId}'
         'applyCommands'
@@ -34,10 +30,9 @@ from {
           }]
         }
       )
-      'confirmed' |> return 'Order is confirmed, no cancellation'
-      'cancelled' |> return 'Order is already cancelled'
-      nothing |> return 'Order not found'
-      |> return $'Error: {orderState}'
+      'confirmed' |> 'Order is confirmed, no cancellation'
+      'cancelled' |> 'Order is already cancelled'
+      |> orderState
 
 
 }

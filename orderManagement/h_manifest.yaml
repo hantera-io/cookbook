@@ -16,6 +16,13 @@ spec:
   componentVersion: '1.0.0'
   codeFile: ./components/cancelPendingOrder.hrule
 ---
+uri: /resources/components/orderManagement/releaseToInvoiceOnShipping.hrule
+spec:
+  name: 'OrderManagement: ReleaseToInvoiceOnShipping'
+  runtime: rule
+  componentVersion: '1.0.0'
+  codeFile: ./components/releaseToInvoiceOnShipping.hrule
+---
 
 ######################################################
 # Main order management reactor

@@ -1,0 +1,16 @@
+param input: OnOrderCommands
+
+let completedDeliveries =
+  input.before.deliveries
+  join right input.order.deliveries on deliveryId
+  where d => d is (:not { deliveryState: 'completed' }, : {deliveryState: 'completed'})
+  select (l, r) => r
+
+from
+  completedDeliveries
+  select delivery =>
+    from effects.order.command.releaseShippingToInvoicing(delivery)
+
+    from
+      delivery.orderLines
+      select orderLine => effects.order.command.releaseOrderLineToInvoicing(orderLine)
