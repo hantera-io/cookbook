@@ -9,8 +9,16 @@ let completedDeliveries =
 from
   completedDeliveries
   select delivery =>
-    from effects.order.command.releaseShippingToInvoicing(delivery)
+    from {
+      effect = 'orderCommand'
+      type = 'releaseShippingToInvoicing'
+      deliveryId = delivery.deliveryId
+    }
 
     from
       delivery.orderLines
-      select orderLine => effects.order.command.releaseOrderLineToInvoicing(orderLine)
+      select orderLine => {
+        effect = 'orderCommand'
+        type = 'releaseOrderLineToInvoicing'
+        orderLineId = orderLine.orderLineId
+      }
