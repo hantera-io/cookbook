@@ -5,40 +5,45 @@ param templateUuid: uuid
 
 // This symbol returns a callReactor effect that effectively calls our mailtrap reactor to send the actual mail.
 // You can edit the templateVariables to suit your template.
-let sendOrderConfirmation = effects.common.callReactor('mailtrap', 'sendEmailTemplate', {
-  to = {
-    email = input.order.invoiceAddress.email
-    name = input.order.invoiceAddress.name
-  }
-  templateUuid = templateUuid
-  templateVariables = {
-    customer = {
+let sendOrderConfirmation = {
+  effect = 'scheduleJob'
+  reactorId = 'mailtrap'
+  method = 'sendEmailTemplate'
+  argument = {
+    to = {
+      email = input.order.invoiceAddress.email
       name = input.order.invoiceAddress.name
-      address = {
-        firstName = input.order.invoiceAddress.name
-        street = input.order.invoiceAddress.addressLine1
-        city = input.order.invoiceAddress.city
-        state = input.order.invoiceAddress.state
-        zip = input.order.invoiceAddress.postalCode
-        country = input.order.invoiceAddress.countryCode
+    }
+    templateUuid = templateUuid
+    templateVariables = {
+      customer = {
+        name = input.order.invoiceAddress.name
+        address = {
+          firstName = input.order.invoiceAddress.name
+          street = input.order.invoiceAddress.addressLine1
+          city = input.order.invoiceAddress.city
+          state = input.order.invoiceAddress.state
+          zip = input.order.invoiceAddress.postalCode
+          country = input.order.invoiceAddress.countryCode
+        }
+      }
+      order = {
+        `number` = input.order.orderNumber
+        items =
+          input.order.deliveries
+          select d => d.orderLines
+          flatten
+          select l => {
+            name = l.description
+            quantity = l.quantity
+            price = l.unitPrice
+          }
+        isRush = false
+        total = input.order.orderTotal
       }
     }
-    order = {
-      `number` = input.order.orderNumber
-      items =
-        input.order.deliveries
-        select d => d.orderLines
-        flatten
-        select l => {
-          name = l.description
-          quantity = l.quantity
-          price = l.unitPrice
-        }
-      isRush = false
-      total = input.order.orderTotal
-    }
   }
-})
+}
 
 // Send order confirmation when order state changes from pending to confirmed:
 from input match

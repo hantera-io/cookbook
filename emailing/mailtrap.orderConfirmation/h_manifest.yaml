@@ -14,7 +14,7 @@ uri: /resources/reactors/mailtrap
 spec:
   componentId: reactor/mailtrap # The componentId is the part of the component URI that comes after '/resources/component/' is the manifest above
   parameters:
-    from: "{ email = '', name = '' }" # Set your sender information
+    from: "{ email = '', name = 'Test E-mail' }" # Set your sender information
 ---
 
 # Rule

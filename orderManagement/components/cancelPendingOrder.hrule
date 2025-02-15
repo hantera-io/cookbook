@@ -1,0 +1,10 @@
+param input: OnOrderCreated
+param delay: duration = 5 minutes
+
+from {
+  effect = 'scheduleJob'
+  reactorId = 'orderManagement'
+  method = 'cancelPendingOrder'
+  argument = input.order.orderId
+  at = input.order.createdAt + delay
+}
