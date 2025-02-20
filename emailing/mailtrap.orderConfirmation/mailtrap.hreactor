@@ -22,8 +22,7 @@ let SendEmailTemplateArgs: {
 from {
   // The method provided by the Reactor to send e-mails through Mailtrap using a pre-configured template
   sendEmailTemplate = (args: SendEmailTemplateArgs) =>
-    httpPost('https://send.api.mailtrap.io/api/send')
-    with {
+    web.http('https://send.api.mailtrap.io/api/send', {
       headers = {
         'Authorization' -> $'Bearer {apiKey}'
         'Content-Type' -> 'application/json'
@@ -40,6 +39,6 @@ from {
         // To find the template UUID, go to https://mailtrap.io/email_templates -> Your template -> Integration tab
         template_uuid = args.templateUuid
         template_variables = args.templateVariables
-      } asJson
-    }
+      }
+    })
 }
