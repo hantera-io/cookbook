@@ -19,7 +19,7 @@ from {
         first // first returns first orderNumber or nothing
 
     from orderState match
-      'pending' |> resources.messageActor (
+      'pending' |> messageActor (
         'order'
         $'{orderId}'
         'applyCommands'

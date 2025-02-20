@@ -1,10 +1,15 @@
-// This Rule engages when an order changes due to commands beign applied
+// This Rule engages when an order changes due to commands being applied
 param input: OnOrderCommands
 
 let deliveriesBefore = input.before.deliveries
 let deliveries = input.order.deliveries
 
-let completeReservationRequest (reservationRequestId) |> effects.common.sendMessage($'/resources/actors/reservationRequest/{reservationRequestId}', 'complete', {})
+let completeReservationRequest (reservationRequestId) |>  {
+  effect = 'messageActor'
+  actorType = 'reservationRequest'
+  actorId = reservationRequestId
+  messageType = 'complete'
+}
 
 // Get all deliveries that were not completed before but are now completed
 let completedDeliveries =
