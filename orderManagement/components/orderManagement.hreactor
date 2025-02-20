@@ -21,7 +21,7 @@ from {
     from orderState match
       'pending' |> messageActor (
         'order'
-        $'{orderId}'
+        orderId
         'applyCommands'
         {
           commands = [{
