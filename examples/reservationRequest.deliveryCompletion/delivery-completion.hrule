@@ -4,11 +4,13 @@ param input: OnOrderCommands
 let deliveriesBefore = input.before.deliveries
 let deliveries = input.order.deliveries
 
-let completeReservationRequest (reservationRequestId) |>  {
+// Return the required message actor effect to complete a reservation request
+let completeReservationRequest (reservationRequestId: Uuid) |>  {
   effect = 'messageActor'
   actorType = 'reservationRequest'
   actorId = reservationRequestId
   messageType = 'complete'
+  body = {}
 }
 
 // Get all deliveries that were not completed before but are now completed
@@ -23,5 +25,6 @@ from
   completedDeliveries
   select delivery =>
     delivery.orderLines
-    select orderline => orderline.reservationRequestId completeReservationRequest
+    select orderline => orderline.reservationRequestId match
+      uuid |> orderline.reservationRequestId completeReservationRequest
   flatten
