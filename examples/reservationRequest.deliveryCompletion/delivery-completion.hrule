@@ -17,7 +17,7 @@ let completeReservationRequest (reservationRequestId: Uuid) |>  {
 let completedDeliveries =
   deliveriesBefore as before
   join right deliveries as delivery on deliveryId
-  where m => m is (:{deliveryState: not 'completed'}, :{deliveryState: 'completed'})
+  where m => m is (:not {deliveryState: 'completed'}, :{deliveryState: 'completed'})
   select m => m.delivery
 
 // For each completed delivery, complete the reservation requests for each order line
