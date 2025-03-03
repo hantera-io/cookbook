@@ -16,7 +16,7 @@ let completeReservationRequest (reservationRequestId: Uuid) |>  {
 // Get all deliveries that were not completed before but are now completed
 let completedDeliveries =
   deliveriesBefore as before
-  join deliveries as delivery on deliveryId
+  join right deliveries as delivery on deliveryId
   where m => m is (:{deliveryState: not 'completed'}, :{deliveryState: 'completed'})
   select m => m.delivery
 
