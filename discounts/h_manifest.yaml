@@ -1,0 +1,25 @@
+uri: /resources/components/discounts/buyXgetYforFree.hdiscount
+spec:
+  componentVersion: 1.0.0
+  codeFile: './buyXgetYforFree.hdiscount'
+---
+uri: /resources/components/promotions/buyXgetYforFree.hrule
+spec:
+  displayName: 'Buy X get Y for free' 
+  componentVersion: 1.0.0
+  codeFile: './buyXgetYforFree.hrule'
+---
+
+
+
+uri: /resources/components/discounts/freeShipping.hdiscount
+spec:
+  componentVersion: 1.0.0
+  codeFile: './freeShipping.hdiscount'
+---
+uri: /resources/components/promotions/freeShipping.hrule
+spec:
+  displayName: 'Free shipping' 
+  description: Gives free shipping to all deliveries based on order value
+  componentVersion: 1.0.0
+  codeFile: './freeShipping.hrule'

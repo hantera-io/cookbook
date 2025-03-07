@@ -1,0 +1,18 @@
+param input: OnOrderBeforeCreated
+param batch = 3
+param freeQty = 1
+
+// A filtrera function used inside the discount to evaluate whether an order
+// line is eligible for the discount:
+param filter: text  = 'l => true'
+
+from {
+  effect = 'orderCommand'
+  type = 'createComputedOrderDiscount'
+  componentId = 'discounts/buyXgetYforFree.hdiscount'
+  parameters = {
+    'batch' -> $'{batch}'
+    'freeQty' -> $'{freeQty}'
+    'filter' -> $'{filter}'
+  }
+}

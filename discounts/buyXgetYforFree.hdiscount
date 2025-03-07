@@ -1,0 +1,23 @@
+// The number of products that needs to be added to get freeQty
+param batch: number = 3
+// The number of free items per batch
+param freeQty = 1
+// Filter that can be set as parameter to discount entity to only apply to certain order lines
+param filter: (:OrderLine) => bool = l => false
+
+let targets =
+  order.deliveries
+  select d => d.orderLines
+  flatten
+  select l => l repeat l.quantity
+  flatten
+  where l => filter(l)
+  order by unitPrice asc
+
+let numBatches = ((targets count) / batch) floor
+let freeCount = numBatches * freeQty
+
+from targets take freeCount select l => percentage(
+  target(e => e is OrderLine and e.orderLineId == l.orderLineId),
+  100% / l.quantity
+)

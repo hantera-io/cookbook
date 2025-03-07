@@ -1,0 +1,6 @@
+// This discount gives 100% shipping discount if order total exceeds threshold
+param orderTotalThreshold: number
+
+from true match
+  when order.orderTotal >= orderTotalThreshold |>
+    percentage(target(e => e is Delivery), 100%)

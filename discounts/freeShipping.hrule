@@ -1,0 +1,16 @@
+param input: OnOrderBeforeCreated
+param name: text = 'Free shipping'
+param orderTotalThreshold: number
+
+
+from {
+  effect = 'orderCommand'
+  type = 'createComputedOrderDiscount'
+  componentId = 'discounts/freeShipping.hdiscount'
+  parameters = {
+    'orderTotalThreshold' -> $'{orderTotalThreshold}'
+  }
+  dynamic = {
+    name = name
+  }
+}
