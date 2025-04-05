@@ -1,0 +1,14 @@
+uri: /resources/components/order.hreactor
+spec:
+  componentVersion: '1.0.0'
+  codeFile: order.hreactor
+---
+uri: /resources/reactors/order
+spec:
+  componentId: order.hreactor
+---
+uri: /resources/registry/channels/WEB_SE
+spec:
+  value:
+    currencyCode: 'SEK'
+    taxIncluded: true

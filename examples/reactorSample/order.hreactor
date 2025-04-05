@@ -1,0 +1,36 @@
+export create(args) =>
+
+  let deliveryId = newid
+
+  let channel = registry->$'channels/{args.channelKey}'
+
+  let orderCommands = [{
+    type = 'setChannelKey'
+    value = args.channelKey
+  },{
+    type = 'createDelivery'
+    deliveryId = deliveryId
+  }]
+
+  let orderLineCommands =
+    args.items
+    select i => {
+      type = 'createOrderLine'
+      deliveryId = deliveryId
+      productNumber = i.productNumber
+      quantity = i.quantity
+    }
+
+  from channel match
+    nothing |> 'Channel not found'
+    { currencyCode: not nothing, taxIncluded: bool } |> messageActor(
+      'order'
+      'new'
+      'create'
+      {
+        currencyCode = channel.currencyCode
+        taxIncluded = channel.taxIncluded
+        commands = [orderCommands, orderLineCommands] flatten
+      }
+    )
+    |> 'Something went wrong'
