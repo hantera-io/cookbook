@@ -22,3 +22,12 @@ from
         type = 'releaseOrderLineToInvoicing'
         orderLineId = orderLine.orderLineId
       }
+
+    from {
+      effect = 'orderCommand'
+      type = 'addActivityLog'
+      messageTemplate = 'Releasing delivery {deliveryNumber} to invoice due to shipment'
+      dynamic = {
+        deliveryNumber = delivery.deliveryNumber
+      }
+    }
