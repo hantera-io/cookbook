@@ -1,5 +1,6 @@
 uri: /resources/rules/orderManagement/cancelPendingOrder
 spec:
+  displayName: Cancel pending orders
   components:
   - componentId: orderManagement/cancelPendingOrder.hrule
     parameters:

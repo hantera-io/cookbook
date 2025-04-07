@@ -1,8 +1,6 @@
 
-from {
-  
-  // Method for canceling an order (if it's in pending state)
-  cancelPendingOrder = (
+// Method for canceling an order (if it's in pending state)
+export cancelPendingOrder(
     orderId: uuid // Prevent query injection by requiring UUID
   ) =>
     // Get current order state
@@ -22,17 +20,17 @@ from {
       'pending' |> messageActor (
         'order'
         orderId
-        'applyCommands'
-        {
-          commands = [{
-            type = 'setOrderState'
-            orderState = 'cancelled'
-          }]
-        }
+        [{
+          type = 'applyCommands'
+          body = {
+            commands = [{
+              type = 'setOrderState'
+              orderState = 'cancelled'
+            }]
+          }
+        }]
       )
       'confirmed' |> 'Order is confirmed, no cancellation'
       'cancelled' |> 'Order is already cancelled'
       |> orderState
 
-
-}

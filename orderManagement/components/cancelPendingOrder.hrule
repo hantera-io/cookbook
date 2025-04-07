@@ -5,6 +5,8 @@ from {
   effect = 'scheduleJob'
   reactorId = 'orderManagement'
   method = 'cancelPendingOrder'
-  argument = input.order.orderId
+  arguments = {
+    orderId = input.order.orderId
+  }
   at = input.order.createdAt + delay
 }
