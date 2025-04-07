@@ -26,11 +26,13 @@ export create(args) =>
     { currencyCode: not nothing, taxIncluded: bool } |> messageActor(
       'order'
       'new'
-      'create'
-      {
-        currencyCode = channel.currencyCode
-        taxIncluded = channel.taxIncluded
-        commands = [orderCommands, orderLineCommands] flatten
-      }
+      [{
+        type = 'create'
+        body = {
+          currencyCode = channel.currencyCode
+          taxIncluded = channel.taxIncluded
+          commands = [orderCommands, orderLineCommands] flatten
+        }
+      }]
     )
     |> 'Something went wrong'
