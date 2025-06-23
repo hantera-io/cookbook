@@ -1,0 +1,62 @@
+import 'iterators'
+
+param input: OnOrderCommands
+
+let getSkuMap(deliveries: [Delivery]) =>
+  deliveries
+  select d =>
+    d.orderLines
+    select ol =>
+      ol.skus
+      select sku => {
+        key = $'{ol.orderLineId}_{sku.skuNumber}'
+        orderLineId = ol.orderLineId
+        inventoryKey = d.inventoryKey
+        inventoryDate = d.inventoryDate
+        skuNumber = sku.skuNumber
+        quantity = sku.totalQuantity
+        deliveryState = d.deliveryState
+      }
+    flatten
+  flatten
+
+let beforeSkuMap = getSkuMap(input.before.deliveries) buffer 
+let afterSkuMap = getSkuMap(input.order.deliveries) buffer
+
+let getDeliveryState(delivery: nothing|Delivery) => delivery match
+  not nothing |> delivery.deliveryState
+  |> 'open'
+
+let reservations =
+  beforeSkuMap
+  join outer afterSkuMap on key
+  select link => link match
+    (:not nothing, :nothing|{deliveryState: 'completed'|'cancelled'|'cancelledByOrder'}) |> {
+      effect = 'messageActor'
+      actorType = 'sku'
+      actorId = link.left.skuNumber
+      messageType = 'unreserve'
+      body = {
+        orderId = input.order.orderId
+        orderLineId = link.left.orderLineId
+        reduce = link.right is {deliveryState: 'completed'}
+      }
+    }
+    |> {
+      effect = 'messageActor'
+      actorType = 'sku'
+      actorId = link.right.skuNumber
+      messageType = 'applyCommands'
+      body = {
+        commands = [{
+          type = 'reserve'
+          orderId = input.order.orderId
+          orderLineId = link.right.orderLineId
+          inventoryKey = link.right.inventoryKey
+          inventoryDate = link.right.inventoryDate
+          quantity = link.right.quantity
+        }]
+      }
+    }
+
+from reservations
