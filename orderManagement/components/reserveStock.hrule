@@ -1,5 +1,5 @@
 import 'iterators'
-
+    
 param input: OnOrderCommands
 
 let getSkuMap(deliveries: [Delivery]) =>
@@ -23,23 +23,39 @@ let getSkuMap(deliveries: [Delivery]) =>
 let beforeSkuMap = getSkuMap(input.before.deliveries) buffer 
 let afterSkuMap = getSkuMap(input.order.deliveries) buffer
 
-let getDeliveryState(delivery: nothing|Delivery) => delivery match
-  not nothing |> delivery.deliveryState
-  |> 'open'
-
 let reservations =
   beforeSkuMap
   join outer afterSkuMap on key
   select link => link match
-    (:not nothing, :nothing|{deliveryState: 'completed'|'cancelled'|'cancelledByOrder'}) |> {
+    (:not nothing, :nothing|{deliveryState: 'cancelled'|'cancelledByOrder'}) |> {
       effect = 'messageActor'
       actorType = 'sku'
       actorId = link.left.skuNumber
-      messageType = 'unreserve'
+      messageType = 'applyCommands'
       body = {
-        orderId = input.order.orderId
-        orderLineId = link.left.orderLineId
-        reduce = link.right is {deliveryState: 'completed'}
+        commands = [{
+          type = 'unreserve'
+          orderId = input.order.orderId
+          orderLineId = link.left.orderLineId
+        }]
+      }
+    }
+    (:not {deliveryState: 'completed'}, :{deliveryState: 'completed'}) |> {
+      effect = 'messageActor'
+      actorType = 'sku'
+      actorId = link.left.skuNumber
+      messageType = 'applyCommands'
+      body = {
+        commands = [{
+          type = 'unreserve'
+          orderId = input.order.orderId
+          orderLineId = link.left.orderLineId
+        },{
+          type = 'setPhysicalStock'
+          inventoryKey = link.right.inventoryKey
+          quantity = link.right.quantity * -1
+          relative = true
+        }]
       }
     }
     |> {

@@ -1,0 +1,5 @@
+uri: /resources/rules/orderManagement/stock
+spec:
+  displayName: Manages stock reservation and updates of stock at delivery completion
+  components:
+  - componentId: orderManagement/reserveStock.hrule
