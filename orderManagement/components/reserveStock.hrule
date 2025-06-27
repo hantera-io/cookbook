@@ -58,7 +58,7 @@ let reservations =
         }]
       }
     }
-    |> {
+    (:value, :{deliveryState: 'open'|'processing'}) |> {
       effect = 'messageActor'
       actorType = 'sku'
       actorId = link.right.skuNumber
