@@ -1,0 +1,37 @@
+import 'iterators'
+
+param orderId: uuid
+
+// Job for canceling an order (if it's in pending state)
+
+// Get current order state
+let orderQuery =
+  query orders(orderState)
+  filter $'orderId == {orderId}'
+
+// Extract order state from query result
+let orderState = orderQuery match
+  QueryError |> $'Error: {orderQuery.message}'
+  |>
+    orderQuery
+    select r => r.orderState
+    first // first returns first orderNumber or nothing
+
+from orderState match
+  'pending' |> messageActor (
+    'order'
+    orderId
+    [{
+      type = 'applyCommands'
+      body = {
+        commands = [{
+          type = 'setOrderState'
+          orderState = 'cancelled'
+        }]
+      }
+    }]
+  )
+  'confirmed' |> 'Order is confirmed, no cancellation'
+  'cancelled' |> 'Order is already cancelled'
+  |> orderState
+

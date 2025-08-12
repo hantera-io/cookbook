@@ -2,33 +2,27 @@
 # All components
 ######################################################
 
-uri: /resources/components/orderManagement.hreactor
+uri: /resources/components/orderManagement/cancelPendingOrder.hrc
 spec:
-  name: OrderManagement
-  runtime: reactor
   componentVersion: '1.0.0'
-  codeFile: ./components/orderManagement.hreactor
+  codeFile: ./components/cancelPendingOrder.hrc
 ---
-uri: /resources/components/orderManagement/cancelPendingOrder.hrule
+uri: /resources/components/orderManagement/cancelPendingOrder.hrl
 spec:
-  name: 'OrderManagement: CancelPendingOrder'
-  runtime: rule
   componentVersion: '1.0.0'
-  codeFile: ./components/cancelPendingOrder.hrule
+  codeFile: ./components/cancelPendingOrder.hrl
 ---
-uri: /resources/components/orderManagement/releaseToInvoiceOnShipping.hrule
+uri: /resources/components/orderManagement/releaseToInvoiceOnShipping.hrl
 spec:
-  name: 'OrderManagement: ReleaseToInvoiceOnShipping'
-  runtime: rule
   componentVersion: '1.0.0'
-  codeFile: ./components/releaseToInvoiceOnShipping.hrule
+  codeFile: ./components/releaseToInvoiceOnShipping.hrl
+---
+uri: /resources/components/orderManagement/reserveStock.hrl
+spec:
+  componentVersion: '1.0.0'
+  codeFile: ./components/reserveStock.hrl
 ---
 
-######################################################
-# Main order management reactor
-# See other .yaml files to install indivudual rules.
-######################################################
-
-uri: /resources/reactors/orderManagement
+uri: /resources/job-definitions/cancelPendingOrder
 spec:
-  componentId: orderManagement.hreactor
+  componentId: orderManagement/cancelPendingOrder.job.hrc

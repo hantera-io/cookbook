@@ -2,4 +2,4 @@ uri: /resources/rules/orderManagement/releaseToInvoiceOnShipping
 spec:
   displayName: Release delivery to invoice upon shipment
   components:
-  - componentId: orderManagement/releaseToInvoiceOnShipping.hrule
+  - componentId: orderManagement/releaseToInvoiceOnShipping.hrl
