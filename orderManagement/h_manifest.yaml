@@ -25,4 +25,4 @@ spec:
 
 uri: /resources/job-definitions/cancelPendingOrder
 spec:
-  componentId: orderManagement/cancelPendingOrder.job.hrc
+  componentId: orderManagement/cancelPendingOrder.hrc

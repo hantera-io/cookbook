@@ -31,7 +31,7 @@ from input match
       beforeSkuMap
       join outer afterSkuMap on key
       select link => link match
-        (:not nothing, :nothing|{deliveryState: 'cancelled'|'cancelledByOrder'}) |> {
+        (:not nothing, :nothing|{deliveryState: 'cancelled'|'cancelledByOrder'}|{inventoryKey:nothing}) |> {
           effect = 'messageActor'
           actorType = 'sku'
           actorId = link.left.skuNumber
@@ -44,25 +44,36 @@ from input match
             }]
           }
         }
-        (:not {deliveryState: 'completed'}, :{deliveryState: 'completed'}) |> {
+        (:value, :{deliveryState: 'completed'}) |> {
           effect = 'messageActor'
           actorType = 'sku'
-          actorId = link.left.skuNumber
+          actorId = link.right.skuNumber
           messageType = 'applyCommands'
           body = {
-            commands = [{
-              type = 'unreserve'
-              orderId = input.order.orderId
-              orderLineId = link.left.orderLineId
-            },{
-              type = 'setPhysicalStock'
-              inventoryKey = link.right.inventoryKey
-              quantity = link.right.quantity * -1
-              relative = true
-            }]
+            commands = link.left match
+              nothing |>
+                // Delivery went straight to completed (no previous state)
+                [{
+                  type = 'setPhysicalStock'
+                  inventoryKey = link.right.inventoryKey
+                  quantity = link.right.quantity * -1
+                  relative = true
+                }]
+              |>
+                // Delivery was possibly reserved before, remove existing reservation
+                [{
+                  type = 'unreserve'
+                  orderId = input.order.orderId
+                  orderLineId = link.left.orderLineId
+                },{
+                  type = 'setPhysicalStock'
+                  inventoryKey = link.right.inventoryKey
+                  quantity = link.right.quantity * -1
+                  relative = true
+                }]
           }
         }
-        (:value, :{deliveryState: 'open'|'processing'}) |> {
+        (:value, :{deliveryState: 'open'|'processing',inventoryKey:not nothing}) |> {
           effect = 'messageActor'
           actorType = 'sku'
           actorId = link.right.skuNumber
