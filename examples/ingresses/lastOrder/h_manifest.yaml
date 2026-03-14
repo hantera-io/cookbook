@@ -5,6 +5,11 @@ spec:
   componentVersion: '1.0.0'
   codeFile: lastOrder.hreactor
 ---
-uri: /resources/reactors/lastOrder
+uri: /resources/ingresses/lastOrder
 spec:
+  type: http
   componentId: api/lastOrder
+  properties:
+    route: last-order
+    httpMethod: post
+    isPublic: false

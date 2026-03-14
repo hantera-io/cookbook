@@ -1,0 +1,19 @@
+
+import 'iterators'
+
+// Query for orders ordered by latest creation timestamp
+let orderQuery =
+  query orders(orderNumber)
+  orderBy 'createdAt desc'
+
+// Extract order number from query result
+let orderNumber = orderQuery match
+  QueryError |> $'Error: {orderQuery.message}'
+  |>
+    orderQuery
+    select r => r.orderNumber
+    first // first returns first orderNumber or nothing
+
+from orderNumber match
+  nothing |> 'No orders'
+  |> orderNumber

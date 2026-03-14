@@ -2,6 +2,7 @@ import 'iterators'
     
 param input: OnOrderCommands | OnOrderDeleted
 
+// Create a list of all order lines and their skus and quantities
 let getSkuMap(deliveries: [Delivery]) =>
   deliveries
   select d =>
@@ -24,13 +25,16 @@ let getSkuMap(deliveries: [Delivery]) =>
 
 from input match
   OnOrderCommands |>
+    // Collect all skus before and after the current order update
     let beforeSkuMap = getSkuMap(input.before.deliveries) buffer 
     let afterSkuMap = getSkuMap(input.order.deliveries) buffer
 
+    // Join the lists to create per-sku pairs
     from
       beforeSkuMap
       join outer afterSkuMap on key
       select link => link match
+        // Unreserve skus that was either cancelled or removed from the order
         (:not nothing, :nothing|{deliveryState: 'cancelled'|'cancelledByOrder'}|{inventoryKey:nothing}) |> {
           effect = 'messageActor'
           actorType = 'sku'
@@ -44,6 +48,8 @@ from input match
             }]
           }
         }
+
+        // Reduce stock of skus that was delivered as well as remove reservation (if there was one)
         (:value, :{deliveryState: 'completed'}) |> {
           effect = 'messageActor'
           actorType = 'sku'
@@ -73,6 +79,8 @@ from input match
                 }]
           }
         }
+
+        // Reserve any sku that's part of an open or processing delivery
         (:value, :{deliveryState: 'open'|'processing',inventoryKey:not nothing}) |> {
           effect = 'messageActor'
           actorType = 'sku'
@@ -89,6 +97,8 @@ from input match
             }]
           }
         }
+  
+  // In case of the order being deleted, remove all reservations
   OnOrderDeleted |>
     getSkuMap(input.order.deliveries)
     buffer
