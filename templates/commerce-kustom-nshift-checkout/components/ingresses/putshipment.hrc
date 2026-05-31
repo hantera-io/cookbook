@@ -1,0 +1,123 @@
+import 'iterators'
+import 'text'
+import 'json'
+import 'maps'
+
+import { verifyBearer } from '../helpers/auth.module.hrc'
+import { resolveCartIdByKustomOrderId } from '../helpers/cart-resolution.module.hrc'
+import { toKustomGetShipment } from '../helpers/mapping.module.hrc'
+
+// =============================================================================
+// KSA: PUT /shipment/{shipment_id}
+//
+// Updates the previously reserved shipment. KSS calls this when the shopper
+// changes their selection before the purchase completes. We re-write the two
+// `nShiftCheckout*` keys onto the cart and respond 200.
+// =============================================================================
+
+param shipmentId: text
+param body: [byte]
+param Authorization: text
+
+let parsedBody = body encode text parseJson
+
+let order = parsedBody match
+  { order: { text -> value } } |> parsedBody.order
+  |> {}
+
+let kustomOrderId = order->'id' match
+  ( id: text ) |> id
+
+let cartId = kustomOrderId match
+  (id: text) |> resolveCartIdByKustomOrderId(id)
+
+let selected = parsedBody match
+  { selected_shipping_option: { text -> value } } |> parsedBody.selected_shipping_option
+
+let sessionActorIdFromPath = shipmentId::uuid
+
+from verifyBearer(Authorization) match
+  nothing |> { statusCode = 401 }
+  |> sessionActorIdFromPath match
+    nothing |> { statusCode = 404 }
+    (sessionActorId: uuid) |> (cartId, selected) match
+      (:uuid, :{ text -> value }) |>
+
+        let selectedOptionId = selected match
+          { text -> value } |> selected->'id' match
+            ( id: text ) |> id
+
+        let cartQuery = messageActor(
+          'ticket'
+          $'{cartId}'
+          [{
+            type = 'query'
+            body = {
+              `query` = { fields = ['dynamic'] }
+            }
+          }]
+        )
+
+        let deliveryDynamic = cartQuery match
+          { data: { query: { dynamic: { text -> value } } } } |>
+            cartQuery.data.query.dynamic->'deliveryDynamicFields' match
+              (d: { text -> value }) |> d
+              |> {}
+          |> {}
+
+        let sessionQuery = messageActor(
+          'ticket'
+          sessionActorId
+          [{
+            type = 'query'
+            body = {
+              `query` = { fields = ['dynamic'] }
+            }
+          }]
+        )
+
+        let chosenOption = sessionQuery match
+          { data: { query: { dynamic: { text -> value } } } } |> selectedOptionId match
+            (sid: text) |>
+              sessionQuery.data.query.dynamic->'options' match
+                (opts: [value]) |>
+                  opts
+                  where is { carrierId: text, optionId: text }
+                  where o => o.optionId == sid
+                  first
+
+        from chosenOption match
+          { text -> value } |>
+            let newDynamic = {
+              nShiftCheckoutSessionActorId = sessionActorId
+              nShiftCheckoutOptionId = selectedOptionId
+              shippingProductNumber = chosenOption->'shippingProductNumber' match
+                ( shippingProductNumber: text ) |> shippingProductNumber
+            } entries
+
+            let updatedDynamic = [deliveryDynamic entries, newDynamic] flatten asMap
+
+            from messageActor(
+              'ticket'
+              $'{cartId}'
+              [{
+                type = 'applyCommands'
+                body = {
+                  commands = [{
+                    type = 'setDynamicFields'
+                    fields = { deliveryDynamicFields = updatedDynamic }
+                  }]
+                }
+              }]
+              false
+            ) match
+              (res) when res.errors count > 0 |> {
+                statusCode = 500
+                content = { failure_reason = 'Failed to persist selection on the cart' }
+              }
+              |> {
+                statusCode = 200
+                content = toKustomGetShipment(sessionActorId, chosenOption)
+              }
+          |> { statusCode = 400, content = { failure_reason = 'shipping_option_not_available' } }
+      |> { statusCode = 400, content = { failure_reason = 'shipping_option_not_available' } }

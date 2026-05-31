@@ -1,0 +1,30 @@
+import 'iterators'
+import 'text'
+import 'json'
+
+import { verifyHandshakeAndIssueToken } from '../helpers/auth.module.hrc'
+
+// =============================================================================
+// KSA: POST /auth
+//
+// TMS handshake. KSS sends `{ identifier, secret: { nonce, digest } }`. On
+// success we return `201 { token: <jwt> }`; on a credentials mismatch we
+// return 401; on a malformed body we return 400 with `{ failure_reason }`.
+// =============================================================================
+
+param body: [byte]
+
+let parsedBody = body encode text parseJson
+
+let result = verifyHandshakeAndIssueToken(parsedBody)
+
+from result match
+  { token: text } |> {
+    statusCode = 201
+    content = { token = result.token }
+  }
+  { failure_reason: 'Invalid credentials' } |> { statusCode = 401 }
+  { failure_reason: text } |> {
+    statusCode = 400
+    content = { failure_reason = result.failure_reason }
+  }

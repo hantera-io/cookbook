@@ -1,0 +1,29 @@
+import 'iterators'
+import 'text'
+
+// =============================================================================
+// Cart resolution
+//
+// `apps.psp.kustom` stamps the Kustom order id onto the cart as
+// `dynamic.field:kustomOrderId` at order creation and registers it as the
+// typed graph field `ticket.cart.kustomOrderId` via registryEntries. That
+// makes it filterable, so resolving the cart from KSA's `order.id` is a
+// single graph query.
+//
+// This app's `requires.graph.nodes.ticket.cart` block declares the dependency
+// (see h_app.yaml).
+// =============================================================================
+
+let escape t => t replace (/"/, '""')
+
+export resolveCartIdByKustomOrderId(kustomOrderId: text) =>
+  let q =
+    query carts(ticketId)
+    filter $'kustomOrderId == "{escape kustomOrderId}"'
+    match
+      QueryError |> nothing
+      (res) |> res first
+
+  from q match
+    nothing |> nothing
+    |> q.ticketId

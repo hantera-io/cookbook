@@ -1,0 +1,154 @@
+import 'iterators'
+import 'text'
+import 'json'
+import 'maps'
+
+import { verifyBearer } from '../helpers/auth.module.hrc'
+import { resolveCartIdByKustomOrderId } from '../helpers/cart-resolution.module.hrc'
+import { toKustomGetShipment } from '../helpers/mapping.module.hrc'
+
+// =============================================================================
+// KSA: POST /shipment
+//
+// Reserves the shopper's selected option on the cart. We write the two
+// `nShiftCheckout*` keys into `cart.deliveryDynamicFields`. apps.commerce's
+// cart-to-order rule copies those onto the delivery; apps.nshift-checkout's
+// bridge rule then takes over, completes the session ticket, and writes the
+// rich shipping fields onto the delivery.
+//
+// The `shipment_id` we expose is the nShift session ticket actor id.
+// =============================================================================
+
+param body: [byte]
+param authorization: text
+
+let parsedBody = body encode text parseJson
+
+let order = parsedBody match
+  { order: { text -> value } } |> parsedBody.order
+  |> {}
+
+let kustomOrderId = order->'id' match
+  ( id: text ) |> id
+
+let cartId = kustomOrderId match
+  (id: text) |> resolveCartIdByKustomOrderId(id)
+
+let selected = parsedBody match
+  { selected_shipping_option: { id: text } } |> parsedBody.selected_shipping_option
+
+let selectedOptionId = selected match
+  { id: text } |> selected.id
+
+let writeSelectionAndRespond(cart: uuid, sessionActorId: uuid, optionId: text) =>
+  let cartQuery = messageActor(
+    'ticket'
+    cart
+    [{
+      type = 'query'
+      body = { `query` = { fields = ['dynamic'] } }
+    }]
+  )
+
+  let deliveryDynamic: { text-> value } = cartQuery match
+    { data: { query: { dynamic: { text -> value } } } } |>
+      cartQuery.data.query.dynamic->'deliveryDynamicFields' match
+        (d: { text -> value }) |> d
+        |> {}
+    |> {}
+
+  let sessionQuery = messageActor(
+    'ticket'
+    sessionActorId
+    [{
+      type = 'query'
+      body = { `query` = { fields = ['dynamic'] } }
+    }]
+  )
+
+  let chosenOption = sessionQuery match
+    { data: { query: { dynamic: { text -> value } } } } |>
+      sessionQuery.data.query.dynamic->'options' match
+        (opts: [value]) |>
+          opts
+          where is { carrierId: text, optionId: text}
+          where o => o.optionId == optionId
+          first
+
+  let shippingProductNumber = chosenOption match
+      { shippingProductNumber: text } |> chosenOption.shippingProductNumber
+
+  let addDynamicFields: [(:text, :value)] = [
+      ('nShiftCheckoutSessionActorId', sessionActorId),
+      ('nShiftCheckoutOptionId', optionId),
+      ('shippingProductNumber', shippingProductNumber)
+    ]
+
+  let updatedDynamic =
+    [deliveryDynamic entries, addDynamicFields]
+    flatten
+    asMap
+
+  let writeResult = messageActor(
+    'ticket'
+    cart
+    [{
+      type = 'applyCommands'
+      body = {
+        commands = [{
+          type = 'setDynamicFields'
+          fields = { deliveryDynamicFields = updatedDynamic }
+        }]
+      }
+    }]
+    false
+  )
+
+  from writeResult match
+    (res) when res.errors count > 0 |> {
+      statusCode = 500
+      content = { failure_reason = 'Failed to persist selection on the cart' }
+    }
+    |>
+
+      from {
+        statusCode = 201
+        content = chosenOption match
+          nothing |> nothing
+          |> toKustomGetShipment(sessionActorId, chosenOption)
+      }
+
+let loadSessionActorId(cartId: uuid) =>
+  let cart =
+    query carts(dynamic)
+    filter $'ticketId == {cartId}'
+    match
+      QueryError |> nothing
+      (res) |> res first
+
+  from cart match
+    nothing |> nothing
+    |> cart.dynamic->'deliveryDynamicFields' match
+      (deliveryDynamicFields: { text-> value }) |> deliveryDynamicFields->'nShiftCheckoutSessionActorId' match
+        (id: text) |> id::uuid
+
+from verifyBearer(authorization) match
+  nothing |> { statusCode = 401 }
+  |> cartId match
+    nothing |> {
+      statusCode = 400
+      content = {
+        failure_reason = 'Missing order.id, or no Hantera cart matches it'
+      }
+    }
+    (cart: uuid) |> selectedOptionId match
+      nothing |> {
+        statusCode = 400
+        content = { failure_reason = 'shipping_option_not_available' }
+      }
+      (optionId: text) |> loadSessionActorId(cart) match
+        nothing |> {
+          statusCode = 400
+          content = { failure_reason = 'shipping_option_not_available' }
+        }
+        (sessionActorId: uuid) |> writeSelectionAndRespond(cart, sessionActorId, optionId)
