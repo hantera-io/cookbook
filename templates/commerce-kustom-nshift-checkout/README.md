@@ -179,6 +179,16 @@ Each channel used must have:
 | `components/ingresses/shippingoptions.hrc`      | The nShift `variables` record. Must include `channelKey` so the nShift module can resolve the checkout configuration id. Add merchant-specific variables (warehouse, split, etc.) here.   |
 | `h_app.yaml`                                    | App `id`, routes, ACLs, settings, and the `requires.modules` type (keep in sync with the nShift app's actual export type).                                                                |
 
+## Required ACLs
+
+The `shippingoptions` ingress must grant `actors/ticket:create` in addition to
+the usual `:query` / `:applyCommands` / `:complete`. The nShift module's
+`getOptions` creates an `nShiftCheckoutSession` ticket actor the first time
+it's called for a cart; without `:create` permission the actor is silently
+rejected with `UNAUTHORIZED_MESSAGE` and the cart ends up pointing at a
+session that doesn't exist. The same applies to any other ingress in your app
+that calls `getOptions`.
+
 ## nShift `variables`
 
 Implement an `OnNShiftCheckoutVariables` listener rule (in this app or

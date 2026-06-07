@@ -78,7 +78,7 @@ from verifyBearer(authorization) match
             |> {}
 
           let existingSessionActorId = deliveryDynamic->'nShiftCheckoutSessionActorId' match
-            (id: uuid) |> id
+            (id: text) |> id::uuid
 
           let cartContext = {
             channelKey = cartOrder.channelKey
@@ -118,34 +118,48 @@ from verifyBearer(authorization) match
                 pickupPoints: [value] | nothing
               }]
             } |>
-              let newDynamic = {
-                nShiftCheckoutSessionActorId = result.sessionActorId
-              } entries
-              let updatedDynamic = [deliveryDynamic entries, newDynamic] flatten asMap
-
-              from messageActor(
-                'ticket'
-                resolvedCartId
-                [{
-                  type = 'applyCommands'
-                  body = {
-                    commands = [{
-                      type = 'setDynamicFields'
-                      fields = { deliveryDynamicFields = updatedDynamic }
-                    }]
-                  }
-                }]
-                false
-              ) match
-                |> {
-                  statusCode = 200
-                  content = {
-                    shipping_options =
-                      result.options
-                      select o => toKustomShippingOption(o)
-                      buffer
-                  }
+              let kustomResponse = {
+                statusCode = 200
+                content = {
+                  shipping_options =
+                    result.options
+                    select o => toKustomShippingOption(o)
+                    buffer
                 }
+              }
+
+              // Skip the cart write when the session pointer hasn't changed.
+              // Two things rely on this: the bridge rule only needs the actor
+              // id to be stable across renders, and a parallel /shipment call
+              // (KSS fires both on submit) must not see the cart's session
+              // pointer flip out from under it.
+              let sessionUnchanged = deliveryDynamic->'nShiftCheckoutSessionActorId' match
+                (existing: text) |> existing::uuid == result.sessionActorId
+                |> false
+
+              from sessionUnchanged match
+                true |> kustomResponse
+                |>
+                  let newDynamic = {
+                    nShiftCheckoutSessionActorId = result.sessionActorId
+                  } entries
+                  let updatedDynamic = [deliveryDynamic entries, newDynamic] flatten asMap
+
+                  from messageActor(
+                    'ticket'
+                    resolvedCartId
+                    [{
+                      type = 'applyCommands'
+                      body = {
+                        commands = [{
+                          type = 'setDynamicFields'
+                          fields = { deliveryDynamicFields = updatedDynamic }
+                        }]
+                      }
+                    }]
+                    false
+                  ) match
+                    |> kustomResponse
             Error |> {
               statusCode = 502
               content = { failure_reason = result.error.message }

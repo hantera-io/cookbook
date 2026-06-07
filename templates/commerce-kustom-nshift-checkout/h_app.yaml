@@ -32,14 +32,16 @@ requires:
     nodes:
       ticket.cart:
         fields:
-          cartId: { type: uuid }
           # kustomOrderId is provided by apps.psp.kustom's registryEntries,
           # which surfaces `dynamic.field:kustomOrderId` as a typed graph
           # field. Used by helpers/cart-resolution.module.hrc to look up the
           # cart from KSA's `order.id`.
           kustomOrderId: { type: text }
+      ticket.nShiftCheckoutSession:
+        fields: {}
     sets:
       carts: { node: ticket.cart }
+      nShiftCheckoutSessions: { node: ticket.nShiftCheckoutSession }
   modules:
     /apps/nshift-checkout/nshift.module.hrc:
       exports:
@@ -95,12 +97,19 @@ ingresses:
       isPublic: true
 
   # KSA: POST /shippingoptions — return shipping options for the cart
+  #
+  # `actors/ticket:create` is required because the nshift-checkout module's
+  # getOptions creates an `nShiftCheckoutSession` ticket actor the first time
+  # it's called for a cart. Without it, the create is rejected with
+  # UNAUTHORIZED_MESSAGE and the cart ends up pointing at a non-existent
+  # session.
   - id: shippingoptions
     componentId: ingresses/shippingoptions.hrc
     acl:
       - actors/ticket:complete
       - actors/ticket:query
       - actors/ticket:applyCommands
+      - actors/ticket:create
       - graph/ticket.cart:*
       - graph/order:*
       - graph/delivery:*
@@ -155,8 +164,11 @@ ingresses:
       - registry/apps/commerce-kustom-nshift-checkout:read
     type: http
     properties:
-      route: /kustom/nshift/shipment/{shipmentId}
+      route: /kustom/nshift/shipment/{sessionActorId}
       httpMethod: GET
+      headers: {
+        authorization: Authorization
+      }
       isPublic: true
 
   # KSA: PUT /shipment/{shipment_id} — update the previously reserved shipment
@@ -171,8 +183,11 @@ ingresses:
       - registry/apps/commerce-kustom-nshift-checkout:read
     type: http
     properties:
-      route: /kustom/nshift/shipment/{shipmentId}
+      route: /kustom/nshift/shipment/{sessionActorId}
       httpMethod: PUT
+      headers: {
+        authorization: Authorization
+      }
       body:
         mode: raw
         parameter: body

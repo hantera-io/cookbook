@@ -11,13 +11,15 @@ import { toKustomGetShipment } from '../helpers/mapping.module.hrc'
 // KSA: PUT /shipment/{shipment_id}
 //
 // Updates the previously reserved shipment. KSS calls this when the shopper
-// changes their selection before the purchase completes. We re-write the two
-// `nShiftCheckout*` keys onto the cart and respond 200.
+// changes their selection before the purchase completes. The session id is
+// taken from the path; we look up the chosen option on that session and
+// re-write the three `nShiftCheckout*` keys onto the cart's
+// `deliveryDynamicFields`.
 // =============================================================================
 
-param shipmentId: text
+param sessionActorId: uuid
 param body: [byte]
-param Authorization: text
+param authorization: text
 
 let parsedBody = body encode text parseJson
 
@@ -32,85 +34,104 @@ let cartId = kustomOrderId match
   (id: text) |> resolveCartIdByKustomOrderId(id)
 
 let selected = parsedBody match
-  { selected_shipping_option: { text -> value } } |> parsedBody.selected_shipping_option
+  { selected_shipping_option: { id: text } } |> parsedBody.selected_shipping_option
 
-let sessionActorIdFromPath = shipmentId::uuid
+let selectedOptionId = selected match
+  { id: text } |> selected.id
 
-from verifyBearer(Authorization) match
+let loadCart(cartId: uuid) =>
+  let res =
+    query carts(dynamic)
+    filter $'ticketId == {cartId}'
+    match
+      QueryError |> nothing
+      (r) |> r first
+
+  from res
+
+let loadSession(sessionActorId: uuid) =>
+  let res =
+    query nShiftCheckoutSessions(dynamic)
+    filter $'ticketId == {sessionActorId}'
+    match
+      QueryError |> nothing
+      (r) |> r first
+
+  from res
+
+let resolveChosenOption(session, optionId: text) =>
+  from session match
+    { dynamic: { text -> value } } |> session.dynamic->'options' match
+      (opts: [value]) |>
+        opts
+        where is { carrierId: text, optionId: text}
+        where o => o.optionId == optionId
+        first
+
+let writeSelectionToCart(cartId: uuid, cart, sessionActorId: uuid, optionId: text, chosenOption) =>
+  let deliveryDynamic: { text-> value } = cart match
+    { dynamic: { text -> value } } |> cart.dynamic->'deliveryDynamicFields' match
+      (d: { text -> value }) |> d
+      |> {}
+    |> {}
+
+  let shippingProductNumber = chosenOption match
+    { shippingProductNumber: text } |> chosenOption.shippingProductNumber
+
+  let addDynamicFields: [(:text, :value)] = [
+    ('nShiftCheckoutSessionActorId', sessionActorId),
+    ('nShiftCheckoutOptionId', optionId),
+    ('shippingProductNumber', shippingProductNumber)
+  ]
+
+  let updatedDynamic =
+    [deliveryDynamic entries, addDynamicFields]
+    flatten
+    asMap
+
+  from messageActor(
+    'ticket'
+    cartId
+    [{
+      type = 'applyCommands'
+      body = {
+        commands = [{
+          type = 'setDynamicFields'
+          fields = { deliveryDynamicFields = updatedDynamic }
+        }]
+      }
+    }]
+    false
+  )
+
+from verifyBearer(authorization) match
   nothing |> { statusCode = 401 }
-  |> sessionActorIdFromPath match
-    nothing |> { statusCode = 404 }
-    (sessionActorId: uuid) |> (cartId, selected) match
-      (:uuid, :{ text -> value }) |>
-
-        let selectedOptionId = selected match
-          { text -> value } |> selected->'id' match
-            ( id: text ) |> id
-
-        let cartQuery = messageActor(
-          'ticket'
-          $'{cartId}'
-          [{
-            type = 'query'
-            body = {
-              `query` = { fields = ['dynamic'] }
-            }
-          }]
-        )
-
-        let deliveryDynamic = cartQuery match
-          { data: { query: { dynamic: { text -> value } } } } |>
-            cartQuery.data.query.dynamic->'deliveryDynamicFields' match
-              (d: { text -> value }) |> d
-              |> {}
-          |> {}
-
-        let sessionQuery = messageActor(
-          'ticket'
-          sessionActorId
-          [{
-            type = 'query'
-            body = {
-              `query` = { fields = ['dynamic'] }
-            }
-          }]
-        )
-
-        let chosenOption = sessionQuery match
-          { data: { query: { dynamic: { text -> value } } } } |> selectedOptionId match
-            (sid: text) |>
-              sessionQuery.data.query.dynamic->'options' match
-                (opts: [value]) |>
-                  opts
-                  where is { carrierId: text, optionId: text }
-                  where o => o.optionId == sid
-                  first
+  |> cartId match
+    nothing |> {
+      statusCode = 400
+      content = {
+        failure_reason = 'Missing order.id, or no Hantera cart matches it'
+      }
+    }
+    (cart: uuid) |> selectedOptionId match
+      nothing |> {
+        statusCode = 400
+        content = { failure_reason = 'shipping_option_not_available' }
+      }
+      (optionId: text) |>
+        let cartRecord = loadCart(cart)
+        let session = loadSession(sessionActorId)
+        let chosenOption = resolveChosenOption(session, optionId)
 
         from chosenOption match
+          nothing |> {
+            statusCode = 400
+            content = { failure_reason = 'shipping_option_not_available' }
+          }
           { text -> value } |>
-            let newDynamic = {
-              nShiftCheckoutSessionActorId = sessionActorId
-              nShiftCheckoutOptionId = selectedOptionId
-              shippingProductNumber = chosenOption->'shippingProductNumber' match
-                ( shippingProductNumber: text ) |> shippingProductNumber
-            } entries
+            let writeResult = writeSelectionToCart(cart, cartRecord, sessionActorId, optionId, chosenOption)
 
-            let updatedDynamic = [deliveryDynamic entries, newDynamic] flatten asMap
-
-            from messageActor(
-              'ticket'
-              $'{cartId}'
-              [{
-                type = 'applyCommands'
-                body = {
-                  commands = [{
-                    type = 'setDynamicFields'
-                    fields = { deliveryDynamicFields = updatedDynamic }
-                  }]
-                }
-              }]
-              false
-            ) match
+            from writeResult match
               (res) when res.errors count > 0 |> {
                 statusCode = 500
                 content = { failure_reason = 'Failed to persist selection on the cart' }
@@ -119,5 +140,3 @@ from verifyBearer(Authorization) match
                 statusCode = 200
                 content = toKustomGetShipment(sessionActorId, chosenOption)
               }
-          |> { statusCode = 400, content = { failure_reason = 'shipping_option_not_available' } }
-      |> { statusCode = 400, content = { failure_reason = 'shipping_option_not_available' } }
